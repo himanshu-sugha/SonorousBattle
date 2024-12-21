@@ -99,11 +99,9 @@ async def start_battle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Starts a new music battle with genre selection."""
     if len(context.args) != 0:
         await update.message.reply_text(
-            "Usage: /startbattle <userAddress>"
+            "Usage: /startbattle "
         )
         return
-
-    user_address = "0xBcd4042DE499D14e55001CcbB24a551F3b954096"
 
     # Step 1: Create Inline Keyboard for Genre Selection
     buttons = [
@@ -127,7 +125,7 @@ async def handle_genre_selection(update: Update, context: ContextTypes.DEFAULT_T
     _, genre = query.data.split("|")
 
     # Step 2: Allocate two songs and their creators from the selected genre
-    songs = SONG_CREATOR_MAPPING[genre]
+    songs = SONG_CREATOR_MAPPING.get(genre, [])
     if len(songs) < 2:
         await query.edit_message_text("❌ Not enough songs in the selected genre.")
         return
@@ -136,23 +134,23 @@ async def handle_genre_selection(update: Update, context: ContextTypes.DEFAULT_T
     creator1, creator2 = songs[0]["creator"], songs[1]["creator"]
 
     # Step 3: Get payment amount for the selected genre
-    payment_amount = GENRES[genre]
+    payment_amount = GENRES.get(genre, 0)
 
-    wallet = ""
+    # Retrieve the wallet address
     try:
-        # Correct access to chat_id using callback query's message
-        group_id = query.message.chat.id  # Use query.message for callback queries
+        group_id = query.message.chat.id  # Correct access to group_id
         user_id = query.from_user.id
 
+        # Check wallet mapping
         if group_id not in wallet_mapping or user_id not in wallet_mapping[group_id]:
-            await query.edit_message_text("You haven't set your wallet address yet.")
+            await query.edit_message_text("❌ You haven't set your wallet address yet. Use /setwallet to set it.")
             return
 
         wallet = wallet_mapping[group_id][user_id]["wallet"]
-        print("Wallet is this:",wallet)
     except Exception as e:
         logger.error(f"Exception occurred: {e}")
-        message = "❌ Failed to get Wallet Address."
+        await query.edit_message_text("❌ Failed to retrieve wallet address.")
+        return
 
     # Step 4: Prepare payload
     payload = {
@@ -160,81 +158,104 @@ async def handle_genre_selection(update: Update, context: ContextTypes.DEFAULT_T
         "track2": track2,
         "creatorTrack1": creator1,
         "creatorTrack2": creator2,
-        "userAddress": wallet,  # Or use wallet mapping
+        "userAddress": wallet,
         "paymentAmount": payment_amount,
     }
 
-    check=False
     # Step 5: Send payload to the backend
     try:
         response = requests.post(f"{BASE_URL}/startbattle", json=payload)
         data = response.json()
 
         if response.status_code == 200:
-            check=True
-            battleId = data.get('battleId', 'N/A')
+            battleId = data.get("battleId", "N/A")
+            if battleId == "N/A":
+                await query.edit_message_text("❌ Battle creation failed.")
+                return
+
             message = (
                 f"🎵 {data['message']}\n"
-                f"Battle ID: {data.get('battleId', 'N/A')}\n"
+                f"Battle ID: {battleId}\n"
                 f"Balance Before: {data['balanceBefore']}\n"
                 f"Balance After: {data['balanceAfter']}\n"
                 f"Transaction Hash: {data['transactionHash']}"
             )
             await query.edit_message_text(message)
         else:
-            message = f"❌ Error: {data.get('error', 'Unknown error occurred.')}."
-            await query.edit_message_text(message)
+            await query.edit_message_text(f"❌ Error: {data.get('error', 'Unknown error occurred.')}")
             return
     except Exception as e:
         logger.error(e)
-        message = "❌ Failed to connect to the backend."
-        await query.edit_message_text(message)
+        await query.edit_message_text("❌ Failed to connect to the backend.")
         return
 
     # Step 6: Set up the voting UI
-    if check:
-        buttons = [
-    [
-        InlineKeyboardButton(
-            f"🎵 Vote Track 1 ({VOTES['track1']} votes)",
-            callback_data=f"vote|track1|{battleId}|{wallet}|{payment_amount}"
-        ),
-        InlineKeyboardButton(
-            f"🎵 Vote Track 2 ({VOTES['track2']} votes)",
-            callback_data=f"vote|track2|{battleId}|{wallet}|{payment_amount}"
-        ),
+    buttons = [
+        [
+            InlineKeyboardButton(
+                f"🎵 Vote Track 1 (0 votes)",
+                callback_data=f"vote|track1|{battleId}|{payment_amount}",
+            ),
+            InlineKeyboardButton(
+                f"🎵 Vote Track 2 (0 votes)",
+                callback_data=f"vote|track2|{battleId}|{payment_amount}",
+            ),
+        ]
     ]
-]
-        voting_keyboard = InlineKeyboardMarkup(buttons)
+    voting_keyboard = InlineKeyboardMarkup(buttons)
 
-
-        await query.edit_message_text(
+    await query.message.reply_text(
         f"Vote for your favorite track below:\n\n"
         f"Track 1: {track1} by {creator1}\n"
         f"Track 2: {track2} by {creator2}\n",
         reply_markup=voting_keyboard,
-        )
-
+    )
 
 
 # Callback handler for voting (handles both UI updates and functionality)
 async def handle_voting(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handles voting for tracks and updates the UI based on the backend response."""
+    """Handles voting for tracks and updates the user with a separate message."""
     query = update.callback_query
     await query.answer()
 
     # Extract the data from the callback_data
-    _, voted_track, battle_id, user_address, payment_amount = query.data.split("|")
-    
-    battle_id = int(battle_id)  # Convert to integer if necessary
-    payment_amount = float(payment_amount)  # Convert to float for numeric operations (if necessary)
+    try:
+        # Unpack the data based on the updated structure
+        _, voted_track, battle_id, payment_amount = query.data.split("|")
+    except ValueError:
+        await query.message.reply_text("❌ Invalid voting data received. Please try again.")
+        return
+
+    # Convert `battle_id` and `payment_amount` to appropriate types
+    try:
+        battle_id = int(battle_id)  # Convert to integer if necessary
+        payment_amount = float(payment_amount)  # Convert to float for numeric operations
+    except ValueError:
+        await query.message.reply_text("❌ Invalid data format in voting information.")
+        return
 
     # Determine the track number (1 or 2) based on the vote
     track_number = 1 if voted_track == "track1" else 2
 
+    user_address = ""
+    try:
+        group_id = query.message.chat.id  # Correct access to group_id
+        user_id = query.from_user.id
+
+        # Check wallet mapping
+        if group_id not in wallet_mapping or user_id not in wallet_mapping[group_id]:
+            await query.edit_message_text("❌ You haven't set your wallet address yet. Use /setwallet to set it.")
+            return
+
+        user_address = wallet_mapping[group_id][user_id]["wallet"]
+    except Exception as e:
+        logger.error(f"Exception occurred: {e}")
+        await query.edit_message_text("❌ Failed to retrieve wallet address.")
+        return
+
     # Prepare the payload to send to the backend
     if not battle_id or not user_address or not payment_amount:
-        await query.edit_message_text("❌ Missing required information to process your vote.")
+        await query.message.reply_text("❌ Missing required information to process your vote.")
         return
 
     payload = {
@@ -244,42 +265,75 @@ async def handle_voting(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         "paymentAmount": payment_amount,
     }
 
-    # Step 1: Make API request to process the vote
+    transaction_hash = ""
     try:
+        # Step 1: Make API request to process the vote
+        print("YOUR PAYLOAD IS THIS:")
+        print(payload)
         response = requests.post(f"{BASE_URL}/votetrack", json=payload)
-        data = response.json()
 
-        # Check the backend response
+    # Try to parse the JSON response
+        data = response.json() if response.status_code == 200 else {}
+
+    # Step 2: Handle response status codes
         if response.status_code == 200:
-            message = f"✅ {data['message']} \nTransaction Hash: {data.get('transactionHash', 'N/A')}"
-            # Update the vote count after a successful vote
-            if voted_track in VOTES:
-                VOTES[voted_track] += 1
+            transaction_hash = data.get("transactionHash", "N/A")
+            message_from_backend = data.get("message", "Vote recorded successfully.")
+
+            if "already" not in message_from_backend.lower():
+                message = (
+                f"✅ Your vote for Track {track_number} has been recorded!\n"
+                f"Transaction Hash: {transaction_hash}"
+            )
+            else:
+                message = "❌ You have already voted in this battle."
         else:
+        # Handle non-200 status codes
             message = f"❌ Error: {data.get('error', 'Unknown error occurred.')}"
-    except Exception as e:
-        logger.error(f"Exception occurred: {e}")
-        message = "❌ Failed to connect to the backend."
+    except requests.exceptions.RequestException as e:
+    # Catch network-related exceptions
+        message = f"❌ Failed to connect to the backend. {str(e)}"
 
-    # Step 2: Prepare the updated UI
-    buttons = [
-        [
-            InlineKeyboardButton(f"🎵 Vote Track 1 ({VOTES['track1']} votes)", callback_data=f"vote|track1|{battle_id}|{user_address}|{payment_amount}"),
-            InlineKeyboardButton(f"🎵 Vote Track 2 ({VOTES['track2']} votes)", callback_data=f"vote|track2|{battle_id}|{user_address}|{payment_amount}"),
-        ]
-    ]
-    voting_keyboard = InlineKeyboardMarkup(buttons)
+    # Send the user a separate response message
+    await query.message.reply_text(message)
 
-    # Update the message with the voting UI and tracks
-    await query.edit_message_text(
-        f"Vote for your favorite track below:\n\n"
-        f"Track 1: {SONG_CREATOR_MAPPING['Pop'][0]['song']} by {CREATOR_NAME_MAPPING[SONG_CREATOR_MAPPING['Pop'][0]['creator']]}\n"
-        f"Track 2: {SONG_CREATOR_MAPPING['Pop'][1]['song']} by {CREATOR_NAME_MAPPING[SONG_CREATOR_MAPPING['Pop'][1]['creator']]}\n",
-        reply_markup=voting_keyboard,
-    )
+    # Step 2: Update the voting UI with backend vote counts
+    if transaction_hash != "N/A":
+        try:
+            # Fetch updated vote counts from the backend
+            response = requests.get(f"{BASE_URL}/battle/{battle_id}/votes")
+            data = response.json()
 
-    # Send the backend response message
-    await query.edit_message_text(message)
+            if response.status_code == 200:
+                buttons = [
+                    [
+                        InlineKeyboardButton(
+                            f"🎵 Vote Track 1 ({data['track1Votes']} votes)",
+                            callback_data=f"vote|track1|{battle_id}|{payment_amount}",
+                        ),
+                        InlineKeyboardButton(
+                            f"🎵 Vote Track 2 ({data['track2Votes']} votes)",
+                            callback_data=f"vote|track2|{battle_id}|{payment_amount}",
+                        ),
+                    ]
+                ]
+                voting_keyboard = InlineKeyboardMarkup(buttons)
+
+                # Update the voting UI with current vote counts
+                await query.edit_message_text(
+                    f"Vote for your favorite track below:\n\n"
+                    f"Track 1: {SONG_CREATOR_MAPPING['Pop'][0]['song']} by {CREATOR_NAME_MAPPING[SONG_CREATOR_MAPPING['Pop'][0]['creator']]}\n"
+                    f"Track 2: {SONG_CREATOR_MAPPING['Pop'][1]['song']} by {CREATOR_NAME_MAPPING[SONG_CREATOR_MAPPING['Pop'][1]['creator']]}\n",
+                    reply_markup=voting_keyboard,
+                )
+            else:
+                await query.message.reply_text(
+                    f"❌ Failed to fetch updated votes. Error: {data.get('error', 'Unknown error.')}"
+                )
+        except Exception as e:
+            logger.error(f"Exception occurred while updating UI: {e}")
+            await query.message.reply_text("❌ Failed to update the voting UI.")
+
 
 # Command: /votetrack
 async def vote_track(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -538,32 +592,48 @@ def save_data():
 # Start command
 async def start(update: Update, context: CallbackContext):
     """Sends a welcome message."""
-    update.message.reply_text("Welcome to the Music Battle Bot! 🎶\nType /help to see available commands.")
+    await update.message.reply_text("Welcome to the Music Battle Bot! 🎶\nType /help to see available commands.")
     await update.message.reply_text("Welcome! Use /setwallet <wallet> to link your wallet address.")
 
 async def set_wallet(update: Update, context: CallbackContext):
+    # Get the wallet address (previously set, if any)
+    tempAddress = get_wallet(update, context)
+
+    # If the user already has a wallet address set, notify them
+    if tempAddress != "":
+        print(f"You have already set the wallet address.\n Your wallet address is {tempAddress}")
+        await update.message.reply_text(f"You have already set the wallet address\n Your wallet address is {tempAddress}")
+        return  # Exit the function if the wallet is already set
+
+    # Get group ID, user ID, and username
     group_id = update.message.chat_id
     user_id = update.message.from_user.id
     username = update.message.from_user.username
 
+    # Check if the user has provided a wallet address
     if not context.args:
         await update.message.reply_text("Please provide a wallet address, e.g., /setwallet 0xABC123...")
         return
 
+    # Join the arguments to form the wallet address
     wallet = " ".join(context.args)
 
+    # Initialize the group in the mapping if it doesn't exist
     if group_id not in wallet_mapping:
         wallet_mapping[group_id] = {}
 
+    # Store the wallet address for the user
     wallet_mapping[group_id][user_id] = {
         "wallet": wallet,
         "username": username,
     }
 
     try:
-        save_data()
+        save_data()  # Save the updated data
     except Exception as e:
-        print("Problem in storing data")
+        print(f"Problem in storing data: {e}")
+
+    # Confirm the wallet address has been set
     await update.message.reply_text(f"Wallet address for @{username} set to {wallet}.")
 
 async def get_wallet(update: Update, context: CallbackContext):
@@ -572,7 +642,7 @@ async def get_wallet(update: Update, context: CallbackContext):
 
     if group_id not in wallet_mapping or user_id not in wallet_mapping[group_id]:
         await update.message.reply_text("You haven't set your wallet address yet.")
-        return
+        return ""
 
     wallet = wallet_mapping[group_id][user_id]["wallet"]
     await update.message.reply_text(f"Your wallet address is {wallet}.")
@@ -622,6 +692,7 @@ def main():
     # Start the bot
     logger.info("Bot started...")
     application.run_polling()
+    load_data()
 
 if __name__ == "__main__":
     main()
