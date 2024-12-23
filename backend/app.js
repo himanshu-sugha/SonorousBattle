@@ -17,13 +17,13 @@ const {
 const app = express();
 
 // Global object to store votes for leaderboard (simplified for this example)
-const leaderboard = {
-  track1: 0,
-  track2: 0,
-};
 
 // Middleware
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log("Raw body:", req.rawBody);
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({
@@ -58,15 +58,22 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
-// Route to start a battle
+
+// Start the server
 app.post(
   '/startbattle',
-  validateBattleStart,
-  handleValidationErrors,
+  // validateBattleStart,
+  // handleValidationErrors,
   async (req, res) => {
     try {
-      const { track1, track2,creatorTrack1,creatorTrack2,userAddress,paymentAmount } = req.body;
-      const result = await startBattle(track1, track2 ,creatorTrack1, creatorTrack2,userAddress,paymentAmount);
+      console.log("req-----------------------------------------------------------------------------------------------:",req)
+      console.log("I m in start battle function");
+      const { track1, track2, creatorTrack1, creatorTrack2, userAddress, paymentAmount } = req.body;
+      console.log("req.body:", req.body);
+
+      // Start battle logic
+      const result = await startBattle(track1, track2, creatorTrack1, creatorTrack2, userAddress, paymentAmount);
+      console.log("result from contract:", result);
 
       res.json({
         message: `Music Battle between ${track1} and ${track2} has started!`,
@@ -78,6 +85,7 @@ app.post(
     }
   }
 );
+
 
 
 app.post(
@@ -94,17 +102,31 @@ app.post(
 
       const result = await voteTrack(battleId, trackNumber, userAddress,paymentAmount);
 
+
+
       // Update leaderboard
-      if (trackNumber === 1) {
-        leaderboard.track1++;
-      } else if (trackNumber === 2) {
-        leaderboard.track2++;
+      // if (trackNumber === 1) {
+      //   leaderboard.track1++;
+      // } else if (trackNumber === 2) {
+      //   leaderboard.track2++;
+      // }
+
+      console.log("Inside the vote function :result:",result)
+
+      
+      if(result!=undefined){
+        res.json({
+          message: `Vote registered for Track ${trackNumber}!`,
+          ...result
+        });
+      }
+      else{
+        res.json({
+          message: `Vote already registered for Track ${trackNumber}!`
+        });
       }
 
-      res.json({
-        message: `Vote registered for Track ${trackNumber}!`,
-        ...result
-      });
+
     } catch (error) {
       console.error('Vote Error:', error);
       res.status(500).json({ error: 'Failed to register vote' });
@@ -116,21 +138,21 @@ app.post(
 
 
 
-// Route to get the leaderboard
-app.get('/leaderboard', (req, res) => {
-  try {
-    const sortedLeaderboard = Object.entries(leaderboard)
-      .sort(([, a], [, b]) => b - a)
-      .map(([track, votes]) => ({ track, votes }));
+// // Route to get the leaderboard
+// app.get('/leaderboard/', (req, res) => {
+//   try {
+//     const sortedLeaderboard = Object.entries(leaderboard)
+//       .sort(([, a], [, b]) => b - a)
+//       .map(([track, votes]) => ({ track, votes }));
 
-    res.json({
-      leaderboard: sortedLeaderboard
-    });
-  } catch (error) {
-    console.error('Leaderboard Error:', error);
-    res.status(500).json({ error: 'Failed to retrieve leaderboard' });
-  }
-});
+//     res.json({
+//       leaderboard: sortedLeaderboard
+//     });
+//   } catch (error) {
+//     console.error('Leaderboard Error:', error);
+//     res.status(500).json({ error: 'Failed to retrieve leaderboard' });
+//   }
+// });
 
 // Route to get votes for a battle
 app.get(
@@ -141,7 +163,9 @@ app.get(
     try {
       const { battleId } = req.params;
       const votes = await getBattleVotes(battleId);
+      console.log("votes are-------------------------",votes)
 
+      console.log("votes:----------",votes)
       res.json({
         battleId: parseInt(battleId),
         track1Votes: votes.track1Votes,
@@ -156,26 +180,30 @@ app.get(
 
 // Route to get battle details
 app.get(
-  '/battle/:battleId/details',
+  '/leaderboard/:battleId',  // Corrected to accept battleId as a parameter
   validateBattleId,
   handleValidationErrors,
   async (req, res) => {
     try {
       const { battleId } = req.params;
-      const details = await getBattleDetails(battleId);
+      const votes = await getBattleVotes(battleId);
+
+      // Convert the string votes to numbers (parseInt)
+      const leaderboard = [
+        { track: 'Track 1', votes: parseInt(votes.track1Votes) },  // Convert to number
+        { track: 'Track 2', votes: parseInt(votes.track2Votes) },  // Convert to number
+      ];
+
+      // Sort the leaderboard by votes in descending order
+      const sortedLeaderboard = leaderboard.sort((a, b) => b.votes - a.votes);
 
       res.json({
         battleId: parseInt(battleId),
-        track1: details.track1,
-        track2: details.track2,
-        votesTrack1: details.votesTrack1,
-        votesTrack2: details.votesTrack2,
-        timestamp: details.timestamp,
-        isActive: details.isActive
+        leaderboard: sortedLeaderboard
       });
     } catch (error) {
-      console.error('Get Battle Details Error:', error);
-      res.status(500).json({ error: 'Failed to retrieve battle details' });
+      console.error('Get Votes Error:', error);
+      res.status(500).json({ error: 'Failed to retrieve battle votes' });
     }
   }
 );
@@ -197,6 +225,25 @@ app.get(
     } catch (error) {
       console.error('Get Voters Error:', error);
       res.status(500).json({ error: 'Failed to retrieve total voters' });
+    }
+  }
+);
+app.get(
+  '/battle/:battleId/details',
+  validateBattleId,
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { battleId } = req.params;
+      const result = await getBattleDetails(battleId);
+
+      res.json({
+        battleId: parseInt(battleId),
+        ...result
+      });
+    } catch (error) {
+      console.error('Get Battle Details Error:', error);
+      res.status(500).json({ error: 'Failed to get Battle Details' });
     }
   }
 );
@@ -231,7 +278,7 @@ app.get(
 
       res.json({
         battleId: parseInt(battleId),
-        winner: winner
+        ...winner
       });
     } catch (error) {
       console.error('Get Winner Error:', error);

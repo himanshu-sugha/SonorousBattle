@@ -165,81 +165,136 @@ contract MusicBattle {
         emit VoteCast(battleId, trackNumber, userAddress);
     }
 
+   
+ // Add these helper functions at the start of your contract, before the main function
+function uint2str(uint256 _i) internal pure returns (string memory str) {
+    if (_i == 0) {
+        return "0";
+    }
+    uint256 j = _i;
+    uint256 length;
+    while (j != 0) {
+        length++;
+        j /= 10;
+    }
+    bytes memory bstr = new bytes(length);
+    uint256 k = length;
+    j = _i;
+    while (j != 0) {
+        bstr[--k] = bytes1(uint8(48 + j % 10));
+        j /= 10;
+    }
+    str = string(bstr);
+}
 
-function closeBattle(uint256 battleId) public onlyOwnerOrCreator {
-    console.log("Intial Balance of contract:", (address(this).balance)/1000000000000000000);
+function bool2str(bool _b) internal pure returns (string memory) {
+    return _b ? "true" : "false";
+}
+
+function addressToString(address _addr) internal pure returns (string memory) {
+    bytes32 value = bytes32(uint256(uint160(_addr)));
+    bytes memory alphabet = "0123456789abcdef";
+    bytes memory str = new bytes(42);
+    str[0] = "0";
+    str[1] = "x";
+    for (uint256 i = 0; i < 20; i++) {
+        str[2+i*2] = alphabet[uint8(value[i + 12] >> 4)];
+        str[3+i*2] = alphabet[uint8(value[i + 12] & 0x0f)];
+    }
+    return string(str);
+}
+
+
+function closeBattle(uint256 battleId) public returns (uint256, string memory) {
+    string memory returnData = "";
     uint256 w = address(this).balance;
-    console.log("Attempting to close battle with ID: ", battleId);
+    
+    returnData = string(abi.encodePacked(returnData, "Intial Balance of contract:", uint2str(address(this).balance/1000000000000000000), "\n"));
+    returnData = string(abi.encodePacked(returnData, "Attempting to close battle with ID: ", uint2str(battleId), "\n"));
+    
     require(battleId > 0 && battleId <= battleCount, "Battle does not exist");
     Battle storage battle = battles[battleId];
 
-    console.log("Battle active state: ", battle.isActive);
+    returnData = string(abi.encodePacked(returnData, "Battle active state: ", bool2str(battle.isActive), "\n"));
     require(battle.isActive, "Battle already ended");
 
     uint256 currentTime = getCurrentTime();
-    console.log("Current block timestamp: ", currentTime);
-    console.log("Battle end time: ", battle.endTime);
-    // require(currentTime > battle.endTime, "Battle is still ongoing");
+    returnData = string(abi.encodePacked(returnData, "Current block timestamp: ", uint2str(currentTime), "\n"));
+    returnData = string(abi.encodePacked(returnData, "Battle end time: ", uint2str(battle.endTime), "\n"));
 
-    console.log("Amount Received from Track 1 voters:",battle.amountGivenByTrack1Voters/1000000000000000000);
-    console.log("Amount Received from Track 2 voters:",battle.amountGivenByTrack2Voters/1000000000000000000);
+    returnData = string(abi.encodePacked(returnData, 
+        "Amount Received from Track 1 voters:", uint2str(battle.amountGivenByTrack1Voters/1000000000000000000), "\n",
+        "Amount Received from Track 2 voters:", uint2str(battle.amountGivenByTrack2Voters/1000000000000000000), "\n"
+    ));
 
-    uint256 totalAmountHoldByBattle = battle.amountGivenByTrack1Voters+battle.amountGivenByTrack2Voters+battle.startingFees;
-    console.log("Total amount the Battle holds:",totalAmountHoldByBattle/1000000000000000000);
+    uint256 totalAmountHoldByBattle = battle.amountGivenByTrack1Voters + battle.amountGivenByTrack2Voters + battle.startingFees;
+    returnData = string(abi.encodePacked(returnData, "Total amount the Battle holds:", uint2str(totalAmountHoldByBattle/1000000000000000000), "\n"));
 
     if (battle.votesTrack1 > battle.votesTrack2) {
-        console.log("Track 1 is the winner");
+        returnData = string(abi.encodePacked(returnData, "Track 1 is the winner\n"));
         uint256 amountGivenToEachWinnerVoter = battle.amountGivenByTrack1Voters + (battle.amountGivenByTrack2Voters)/2;
         amountGivenToEachWinnerVoter /= battle.votesTrack1;
         uint256 amountToGivenCreator = (battle.amountGivenByTrack2Voters * (300000000000000000)) / SCALE;
         
-        if(battle.votesTrack2==0){
-            // there are no voters of track 2 
-            // so in this case we will give 80% of voting fees back to the voters 
+        if(battle.votesTrack2 == 0) {
             amountGivenToEachWinnerVoter = (battle.amountGivenByTrack1Voters*8)/10;
             amountGivenToEachWinnerVoter /= battle.votesTrack1;
-            // give 18% to the winner track creator
-            amountToGivenCreator=(battle.amountGivenByTrack1Voters*18)/100;
-            // 2% of balance remains in contract fund
+            amountToGivenCreator = (battle.amountGivenByTrack1Voters*18)/100;
         }
 
-        console.log("Amount will be given to each voter:",amountGivenToEachWinnerVoter/1000000000000000000);
-        console.log("Amount will be given to Winner Track Creator:",amountToGivenCreator/1000000000000000000);
-        
+        returnData = string(abi.encodePacked(returnData, 
+            "Amount will be given to each voter:", uint2str(amountGivenToEachWinnerVoter/1000000000000000000), "\n",
+            "Amount will be given to Winner Track Creator:", uint2str(amountToGivenCreator/1000000000000000000), "\n",
+            "Transferring reward to Track Creator\n",
+            "Winner balance before: ", uint2str(battle.creatorTrack1.balance/1000000000000000000), "\n"
+        ));
 
-        console.log("Transferring reward to Track Creator");
-        console.log("Winner balance before: ", battle.creatorTrack1.balance/1000000000000000000);
         uint256 x = battle.creatorTrack1.balance;
         payable(battle.creatorTrack1).transfer(amountToGivenCreator);
-        console.log("Track 1 Creator receives : ",amountToGivenCreator/1000000000000000000);
-        console.log("Winner balance after: ", battle.creatorTrack1.balance/1000000000000000000);
-        uint256 difference = (battle.creatorTrack1.balance-x)/1000000000000000000;
-        console.log("Difference in winner's balance: ", difference);
+        
+        returnData = string(abi.encodePacked(returnData, 
+            "Track 1 Creator receives : ", uint2str(amountToGivenCreator/1000000000000000000), "\n",
+            "Winner balance after: ", uint2str(battle.creatorTrack1.balance/1000000000000000000), "\n"
+        ));
 
-        if(difference==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
+        uint256 difference = (battle.creatorTrack1.balance-x)/1000000000000000000;
+        returnData = string(abi.encodePacked(returnData, "Difference in winner's balance: ", uint2str(difference), "\n"));
+
+        if(difference == 0) {
+            returnData = string(abi.encodePacked(returnData, 
+                "Money is reverted back to the contract\n",
+                "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+            ));
         }
 
-        // console.log("No. of voters of Track1 :",battle.votersOfTrack1);
-        // console.log("No. of voters of Track2 :",battle.votersOfTrack2);
-
-        console.log("Transferring reward to winner voters");
-        console.log("battle.votesTrack1: ",battle.votesTrack1);
+        returnData = string(abi.encodePacked(returnData, 
+            "Transferring reward to winner voters\n",
+            "battle.votesTrack1: ", uint2str(battle.votesTrack1), "\n"
+        ));
         
         require(battle.votersOfTrack1.length >= battle.votesTrack1, "Voters array length mismatch");
         for(uint i=0; i<battle.votesTrack1; i++) {
             require(battle.votersOfTrack1[i] != address(0), "Invalid voter address");
-            console.log("Winner Voter Number:",i,"Winner Voter balance before: ",battle.votersOfTrack1[i].balance/1000000000000000000 );
+            returnData = string(abi.encodePacked(returnData, 
+                "Winner Voter Number:", uint2str(i), "Winner Voter balance before: ", uint2str(battle.votersOfTrack1[i].balance/1000000000000000000), "\n"
+            ));
+            
             uint256 y = battle.votersOfTrack1[i].balance;
             payable(battle.votersOfTrack1[i]).transfer(amountGivenToEachWinnerVoter);
-            console.log("Amount recieved by the voter No:",i," : ",amountGivenToEachWinnerVoter/1000000000000000000);
-            console.log("Winner Voter Number:",i,"Winner Voter balance after: ", battle.votersOfTrack1[i].balance/1000000000000000000 );
+            
+            returnData = string(abi.encodePacked(returnData, 
+                "Amount recieved by the voter No:", uint2str(i), " : ", uint2str(amountGivenToEachWinnerVoter/1000000000000000000), "\n",
+                "Winner Voter Number:", uint2str(i), "Winner Voter balance after: ", uint2str(battle.votersOfTrack1[i].balance/1000000000000000000), "\n"
+            ));
+            
             difference = (battle.votersOfTrack1[i].balance-y)/1000000000000000000;
-            console.log("Difference in voter's balance: ", difference);
-            if(difference==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
+            returnData = string(abi.encodePacked(returnData, "Difference in voter's balance: ", uint2str(difference), "\n"));
+            
+            if(difference == 0) {
+                returnData = string(abi.encodePacked(returnData, 
+                    "Money is reverted back to the contract\n",
+                    "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+                ));
             }
         }
 
@@ -247,232 +302,331 @@ function closeBattle(uint256 battleId) public onlyOwnerOrCreator {
         emit BattleEnded(battleId, battle.creatorTrack1);
         emit BattleConcluded(battleId, "Track 1 Won", battle.creatorTrack1, battle.voters, true);
 
-        console.log("Remaining Balance Left on contract:", address(this).balance/1000000000000000000);
+        returnData = string(abi.encodePacked(returnData, 
+            "Remaining Balance Left on contract:", uint2str(address(this).balance/1000000000000000000), "\n"
+        ));
+        
         difference = (w-address(this).balance)/1000000000000000000;
-        console.log("Difference in contract Balance :", difference);
-        if(difference==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
-            }
+        returnData = string(abi.encodePacked(returnData, "Difference in contract Balance :", uint2str(difference), "\n"));
+        
+        if(difference == 0) {
+            returnData = string(abi.encodePacked(returnData, 
+                "Money is reverted back to the contract\n",
+                "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+            ));
+        }
+        return (1, returnData);
     } 
     else if (battle.votesTrack1 < battle.votesTrack2) {
-        console.log("Track 2 is the winner");
+        returnData = string(abi.encodePacked(returnData, "Track 2 is the winner\n"));
         uint256 amountGivenToEachWinnerVoter = battle.amountGivenByTrack2Voters + (battle.amountGivenByTrack1Voters)/2;
         amountGivenToEachWinnerVoter /= battle.votesTrack2;
         uint256 amountToGivenCreator = (battle.amountGivenByTrack1Voters * (300000000000000000)) / SCALE;
 
-
-        if(battle.votesTrack1==0){
-            // there are no voters of track 2 
-            // so in this case we will give 80% of voting fees back to the voters 
+        if(battle.votesTrack1 == 0) {
             amountGivenToEachWinnerVoter = (battle.amountGivenByTrack2Voters*8)/10;
             amountGivenToEachWinnerVoter /= battle.votesTrack2;
-            // give 18% to the winner track creator
-            amountToGivenCreator=(battle.amountGivenByTrack2Voters*18)/100;
-            // 2% of balance remains in contract fund
+            amountToGivenCreator = (battle.amountGivenByTrack2Voters*18)/100;
         }
 
-        console.log("Amount will be given to each voter:",amountGivenToEachWinnerVoter/1000000000000000000);
-        console.log("Amount will be given to Winner Track Creator:",amountToGivenCreator/1000000000000000000);
+        returnData = string(abi.encodePacked(returnData, 
+            "Amount will be given to each voter:", uint2str(amountGivenToEachWinnerVoter/1000000000000000000), "\n",
+            "Amount will be given to Winner Track Creator:", uint2str(amountToGivenCreator/1000000000000000000), "\n",
+            "Transferring reward to Track Creator\n",
+            "Winner balance before: ", uint2str(battle.creatorTrack2.balance/1000000000000000000), "\n"
+        ));
 
-        console.log("Transferring reward to Track Creator");
-        console.log("Winner balance before: ", battle.creatorTrack2.balance/1000000000000000000);
-        uint256 x = battle.creatorTrack2.balance;  // Fixed: using Track2 balance
+        uint256 x = battle.creatorTrack2.balance;
         payable(battle.creatorTrack2).transfer(amountToGivenCreator);
-        console.log("Track 2 Creator receives : ",amountToGivenCreator/1000000000000000000);
-        console.log("Winner balance after: ", battle.creatorTrack2.balance/1000000000000000000);
+        
+        returnData = string(abi.encodePacked(returnData, 
+            "Track 2 Creator receives : ", uint2str(amountToGivenCreator/1000000000000000000), "\n",
+            "Winner balance after: ", uint2str(battle.creatorTrack2.balance/1000000000000000000), "\n"
+        ));
+
         uint256 difference = (battle.creatorTrack2.balance-x)/1000000000000000000;
-        console.log("Difference in winner's balance: ", difference);  // Fixed: using Track2 balance
+        returnData = string(abi.encodePacked(returnData, "Difference in winner's balance: ", uint2str(difference), "\n"));
 
-        if(difference==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
-            }
+        if(difference == 0) {
+            returnData = string(abi.encodePacked(returnData, 
+                "Money is reverted back to the contract\n",
+                "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+            ));
+        }
 
-
-        // console.log("# voters of Track1 :",battle.votersOfTrack1);
-        // console.log("# voters of Track2 :",battle.votersOfTrack2);
-
-        console.log("Transferring reward to winner voters");
-        console.log("battle.votesTrack2: ",battle.votesTrack2);
+        returnData = string(abi.encodePacked(returnData, 
+            "Transferring reward to winner voters\n",
+            "battle.votesTrack2: ", uint2str(battle.votesTrack2), "\n"
+        ));
         
         require(battle.votersOfTrack2.length >= battle.votesTrack2, "Voters array length mismatch");
         for(uint i=0; i<battle.votesTrack2; i++) {
             require(battle.votersOfTrack2[i] != address(0), "Invalid voter address");
-            console.log("Winner Voter Number:",i,"Winner Voter balance before: ", battle.votersOfTrack2[i].balance/1000000000000000000);
+            returnData = string(abi.encodePacked(returnData, 
+                "Winner Voter Number:", uint2str(i), "Winner Voter balance before: ", uint2str(battle.votersOfTrack2[i].balance/1000000000000000000), "\n"
+            ));
+            
             uint256 y = battle.votersOfTrack2[i].balance;
             payable(battle.votersOfTrack2[i]).transfer(amountGivenToEachWinnerVoter);
-            console.log("Amount recieved by the voter No:",i," : ",amountGivenToEachWinnerVoter);
-            console.log("Winner Voter Number:",i,"Winner Voter balance after: ", battle.votersOfTrack2[i].balance/1000000000000000000 );
-            difference = (battle.votersOfTrack2[i].balance-y)/1000000000000000000;
-            console.log("Difference in voter's balance: ", difference);  // Fixed: using Track2 voters
-            if(difference==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
-            }
             
+            returnData = string(abi.encodePacked(returnData, 
+                "Amount recieved by the voter No:", uint2str(i), " : ", uint2str(amountGivenToEachWinnerVoter/1000000000000000000), "\n",
+                "Winner Voter Number:", uint2str(i), "Winner Voter balance after: ", uint2str(battle.votersOfTrack2[i].balance/1000000000000000000), "\n"
+            ));
+            
+            difference = (battle.votersOfTrack2[i].balance-y)/1000000000000000000;
+            returnData = string(abi.encodePacked(returnData, "Difference in voter's balance: ", uint2str(difference), "\n"));
+            
+            if(difference == 0) {
+                returnData = string(abi.encodePacked(returnData, 
+                    "Money is reverted back to the contract\n",
+                    "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+                ));
+            }
         }
 
         battle.isActive = false;
         emit BattleEnded(battleId, battle.creatorTrack2);
         emit BattleConcluded(battleId, "Track 2 Won", battle.creatorTrack2, battle.voters, true);
 
-        console.log("Remaining Balance Left on contract:", address(this).balance/1000000000000000000);
+        returnData = string(abi.encodePacked(returnData, 
+            "Remaining Balance Left on contract:", uint2str(address(this).balance/1000000000000000000), "\n"
+        ));
+        
         difference = (w-address(this).balance)/1000000000000000000;
-        console.log("Difference in contract Balance :", difference);
-        if(difference==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
+        returnData = string(abi.encodePacked(returnData, "Difference in contract Balance :", uint2str(difference), "\n"));
+        
+        if(difference == 0) {
+            returnData = string(abi.encodePacked(returnData, 
+                "Money is reverted back to the contract\n",
+                "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+            ));
         }
+        return (2, returnData);
     }
-    else{
-        console.log("There is a Tie");
-        console.log("Track 1 & 2 are the winners");
+    else {
 
-        uint256 amountGivenToEachWinnerVoter = ((battle.amountGivenByTrack1Voters + battle.amountGivenByTrack2Voters)*(800000000000000000))/SCALE; // 80%
-        if( battle.votesTrack1+battle.votesTrack2==0 ){
-            console.log("There are no voters");
-            console.log("Sending 50% money of Starting Battle Fees Back to the person wallet who started the battle");
-            console.log("Battle Creator address:",battle.battleCreator);
-            console.log("Intial Balance:",battle.battleCreator.balance/1000000000000000000);
-            uint256 amountToBeSent = (battle.startingFees*5)/10;
-            uint temp = battle.battleCreator.balance;
-            payable(battle.battleCreator).transfer(amountToBeSent);
-            console.log("After Getting Payment Balance:",battle.battleCreator.balance/1000000000000000000);
-            uint256 difference1= (battle.battleCreator.balance-temp)/1000000000000000000;
-            console.log("Difference in Track Creator 1's balance: ", difference1);
-            if(difference1==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
-            }
+    returnData = string(abi.encodePacked(returnData, 
+        "There is a Tie\n",
+        "Track 1 & 2 are the winners\n"
+    ));
 
-            console.log("Sending 20% money of Starting Battle Fees to Creator of Track 1:");
-            console.log("Creator of Track 1 address:",battle.creatorTrack1);
-            console.log("Intial Balance:",battle.creatorTrack1.balance/1000000000000000000);
-            amountToBeSent = (battle.startingFees*2)/10;
-            temp = battle.creatorTrack1.balance;
-            payable(battle.creatorTrack1).transfer(amountToBeSent);
-            console.log("After Getting Payment Balance:",battle.creatorTrack1.balance/1000000000000000000);
-            difference1= (battle.creatorTrack1.balance-temp)/1000000000000000000;
-            console.log("Difference in Track Creator 1's balance: ", difference1);
-            if(difference1==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
-            }
+    uint256 amountGivenToEachWinnerVoter = ((battle.amountGivenByTrack1Voters + battle.amountGivenByTrack2Voters)*(800000000000000000))/SCALE; // 80%
+    if( battle.votesTrack1+battle.votesTrack2==0 ){
+        returnData = string(abi.encodePacked(returnData, 
+            "There are no voters\n",
+            "Sending 50% money of Starting Battle Fees Back to the person wallet who started the battle\n",
+            "Battle Creator address:", addressToString(battle.battleCreator), "\n",
+            "Intial Balance:", uint2str(battle.battleCreator.balance/1000000000000000000), "\n"
+        ));
 
-            console.log("Sending 20% money of Starting Battle Fees to Creator of Track 2:");
-            console.log("Creator of Track 2 address:",battle.creatorTrack2);
-            console.log("Intial Balance:",battle.creatorTrack2.balance/1000000000000000000);
-            amountToBeSent = (battle.startingFees*2)/10;
-            temp = battle.creatorTrack2.balance;
-            payable(battle.creatorTrack2).transfer(amountToBeSent);
-            console.log("After Getting Payment Balance:",battle.creatorTrack2.balance/1000000000000000000);
-            difference1= (battle.creatorTrack2.balance-temp)/1000000000000000000;
-            console.log("Difference in Track Creator 1's balance: ", difference1);
-            if(difference1==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
-            }
-
-            console.log("10% of battle fees remains back in the contract as contract fund");
-            console.log("10% of battle fees is:",
-            ((battle.startingFees*1)/10)/1000000000000000000
-            );
-            battles[battleId].isActive = false;
-            emit BattleEnded(battleId, battle.creatorTrack1);
-            emit BattleEnded(battleId, battle.creatorTrack2);
-            emit BattleConcluded(battleId, "Track 1 Won", battle.creatorTrack1, battle.votersOfTrack1, true);
-            emit BattleConcluded(battleId, "Track 2 Won", battle.creatorTrack1, battle.votersOfTrack2, true);
-
-            console.log("Remaining Balance Left on contract:", address(this).balance/1000000000000000000);
-            console.log("Difference in contract Balance :", (w-address(this).balance)/1000000000000000000);
-            return;
-
-        }
-
-        amountGivenToEachWinnerVoter /= (battle.votesTrack1+battle.votesTrack2);
-        uint256 amountToGivenCreator = (battle.amountGivenByTrack1Voters + battle.amountGivenByTrack2Voters)/(10); //10%
-        amountToGivenCreator/=2;
-
-        console.log("Transferring reward to Track Creator 1");
-        console.log("Track Creator 1's Balance before: ", battle.creatorTrack1.balance/1000000000000000000);
-        uint256 x = battle.creatorTrack1.balance;
-        payable(battle.creatorTrack1).transfer(amountToGivenCreator);
-        console.log("Track 1 Creator receives : ",amountToGivenCreator/1000000000000000000);
+        uint256 amountToBeSent = (battle.startingFees*5)/10;
+        uint temp = battle.battleCreator.balance;
+        payable(battle.battleCreator).transfer(amountToBeSent);
         
-        console.log("Track Creator 1's Balance after: ", battle.creatorTrack1.balance/1000000000000000000);
-        uint256 difference= (battle.creatorTrack1.balance-x)/1000000000000000000;
-        console.log("Difference in Track Creator 1's balance: ", difference);
-        if(difference==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
+        returnData = string(abi.encodePacked(returnData, 
+            "After Getting Payment Balance:", uint2str(battle.battleCreator.balance/1000000000000000000), "\n"
+        ));
+
+        uint256 difference1 = (battle.battleCreator.balance-temp)/1000000000000000000;
+        returnData = string(abi.encodePacked(returnData, "Difference in Track Creator 1's balance: ", uint2str(difference1), "\n"));
+
+        if(difference1==0){
+            returnData = string(abi.encodePacked(returnData, 
+                "Money is reverted back to the contract\n",
+                "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+            ));
         }
 
+        returnData = string(abi.encodePacked(returnData, 
+            "Sending 20% money of Starting Battle Fees to Creator of Track 1:\n",
+            "Creator of Track 1 address:", addressToString(battle.creatorTrack1), "\n",
+            "Intial Balance:", uint2str(battle.creatorTrack1.balance/1000000000000000000), "\n"
+        ));
 
-        console.log("Transferring reward to Track Creator 2");
-        console.log("Track Creator 2's Balance before: ", battle.creatorTrack2.balance/1000000000000000000);
-        x = battle.creatorTrack2.balance;
-        payable(battle.creatorTrack2).transfer(amountToGivenCreator);
-        console.log("Track 2 Creator receives : ",amountToGivenCreator/1000000000000000000);
-        console.log("Track Creator 2's Balance after: ", battle.creatorTrack2.balance/1000000000000000000);
-        difference=(battle.creatorTrack2.balance-x)/1000000000000000000;
-        console.log("Difference in Track Creator 2's balance: ", difference);
-        if(difference==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
-        }
-
-        // console.log("# voters of Track1 :",battle.votersOfTrack1);
-        // console.log("# voters of Track2 :",battle.votersOfTrack2);
-        console.log("Transferring reward to winner voters");
-        console.log("battle.votesTrack1: ",battle.votesTrack1);
+        amountToBeSent = (battle.startingFees*2)/10;
+        temp = battle.creatorTrack1.balance;
+        payable(battle.creatorTrack1).transfer(amountToBeSent);
         
-        require(battle.votersOfTrack1.length >= battle.votesTrack1, "Voters array length mismatch");
-        for(uint i=0; i<battle.votesTrack1; i++) {
-            require(battle.votersOfTrack1[i] != address(0), "Invalid voter address");
-            console.log("Winner Voter Number:",i,"Winner Voter balance before: ",battle.votersOfTrack1[i].balance/1000000000000000000 );
-            uint256 y = battle.votersOfTrack1[i].balance;
-            payable(battle.votersOfTrack1[i]).transfer(amountGivenToEachWinnerVoter);
-            console.log("Amount recieved by the voter No:",i," : ",amountGivenToEachWinnerVoter/1000000000000000000);
-            console.log("Winner Voter Number:",i,"Winner Voter balance after: ", battle.votersOfTrack1[i].balance/1000000000000000000 );
-            difference = (battle.votersOfTrack1[i].balance-y)/1000000000000000000;
-            console.log("Difference in voter's balance: ", difference);
-            if(difference==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
-            }
+        returnData = string(abi.encodePacked(returnData, 
+            "After Getting Payment Balance:", uint2str(battle.creatorTrack1.balance/1000000000000000000), "\n"
+        ));
+
+        difference1 = (battle.creatorTrack1.balance-temp)/1000000000000000000;
+        returnData = string(abi.encodePacked(returnData, "Difference in Track Creator 1's balance: ", uint2str(difference1), "\n"));
+
+        if(difference1==0){
+            returnData = string(abi.encodePacked(returnData, 
+                "Money is reverted back to the contract\n",
+                "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+            ));
         }
 
-        require(battle.votersOfTrack2.length >= battle.votesTrack2, "Voters array length mismatch");
-        for(uint i=0; i<battle.votesTrack2; i++) {
-            require(battle.votersOfTrack2[i] != address(0), "Invalid voter address");
-            console.log("Winner Voter Number:",i,"Winner Voter balance before: ", battle.votersOfTrack2[i].balance/1000000000000000000 );
-            uint256 y = battle.votersOfTrack2[i].balance;
-            payable(battle.votersOfTrack2[i]).transfer(amountGivenToEachWinnerVoter);
-            console.log("Amount recieved by the voter No:",i," : ",amountGivenToEachWinnerVoter/1000000000000000000);
-            console.log("Winner Voter Number:",i,"Winner Voter balance after: ", battle.votersOfTrack2[i].balance/1000000000000000000 );
-            difference = (battle.votersOfTrack2[i].balance-y)/1000000000000000000;
-            console.log("Difference in voter's balance: ", difference);  // Fixed: using Track2 voters
-            if(difference==0){
-            console.log("Money is reverted back to the contract");
-            console.log("One Reason is that wallet contains maximum allowed amount , which 10,000 ETH");
-            }
+        returnData = string(abi.encodePacked(returnData, 
+            "Sending 20% money of Starting Battle Fees to Creator of Track 2:\n",
+            "Creator of Track 2 address:", addressToString(battle.creatorTrack2), "\n",
+            "Intial Balance:", uint2str(battle.creatorTrack2.balance/1000000000000000000), "\n"
+        ));
+
+        amountToBeSent = (battle.startingFees*2)/10;
+        temp = battle.creatorTrack2.balance;
+        payable(battle.creatorTrack2).transfer(amountToBeSent);
+        
+        returnData = string(abi.encodePacked(returnData, 
+            "After Getting Payment Balance:", uint2str(battle.creatorTrack2.balance/1000000000000000000), "\n"
+        ));
+
+        difference1 = (battle.creatorTrack2.balance-temp)/1000000000000000000;
+        returnData = string(abi.encodePacked(returnData, "Difference in Track Creator 1's balance: ", uint2str(difference1), "\n"));
+
+        if(difference1==0){
+            returnData = string(abi.encodePacked(returnData, 
+                "Money is reverted back to the contract\n",
+                "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+            ));
         }
 
-        battle.isActive = false;
+        returnData = string(abi.encodePacked(returnData, 
+            "10% of battle fees remains back in the contract as contract fund\n",
+            "10% of battle fees is:", uint2str(((battle.startingFees*1)/10)/1000000000000000000), "\n"
+        ));
+
+        battles[battleId].isActive = false;
         emit BattleEnded(battleId, battle.creatorTrack1);
         emit BattleEnded(battleId, battle.creatorTrack2);
         emit BattleConcluded(battleId, "Track 1 Won", battle.creatorTrack1, battle.votersOfTrack1, true);
         emit BattleConcluded(battleId, "Track 2 Won", battle.creatorTrack1, battle.votersOfTrack2, true);
 
-        console.log("Remaining Balance Left on contract:", address(this).balance/1000000000000000000);
-        console.log("Difference in contract Balance :", (w-address(this).balance)/1000000000000000000);
+        returnData = string(abi.encodePacked(returnData, 
+            "Remaining Balance Left on contract:", uint2str(address(this).balance/1000000000000000000), "\n",
+            "Difference in contract Balance :", uint2str((w-address(this).balance)/1000000000000000000), "\n"
+        ));
+
+        return (0, returnData);
     }
+
+    amountGivenToEachWinnerVoter /= (battle.votesTrack1+battle.votesTrack2);
+    uint256 amountToGivenCreator = (battle.amountGivenByTrack1Voters + battle.amountGivenByTrack2Voters)/(10);
+    amountToGivenCreator/=2;
+
+    returnData = string(abi.encodePacked(returnData, 
+        "Transferring reward to Track Creator 1\n",
+        "Track Creator 1's Balance before: ", uint2str(battle.creatorTrack1.balance/1000000000000000000), "\n"
+    ));
+
+    uint256 x = battle.creatorTrack1.balance;
+    payable(battle.creatorTrack1).transfer(amountToGivenCreator);
+    
+    returnData = string(abi.encodePacked(returnData, 
+        "Track 1 Creator receives : ", uint2str(amountToGivenCreator/1000000000000000000), "\n",
+        "Track Creator 1's Balance after: ", uint2str(battle.creatorTrack1.balance/1000000000000000000), "\n"
+    ));
+
+    uint256 difference = (battle.creatorTrack1.balance-x)/1000000000000000000;
+    returnData = string(abi.encodePacked(returnData, "Difference in Track Creator 1's balance: ", uint2str(difference), "\n"));
+
+    if(difference==0){
+        returnData = string(abi.encodePacked(returnData, 
+            "Money is reverted back to the contract\n",
+            "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+        ));
+    }
+
+    returnData = string(abi.encodePacked(returnData, 
+        "Transferring reward to Track Creator 2\n",
+        "Track Creator 2's Balance before: ", uint2str(battle.creatorTrack2.balance/1000000000000000000), "\n"
+    ));
+
+    x = battle.creatorTrack2.balance;
+    payable(battle.creatorTrack2).transfer(amountToGivenCreator);
+    
+    returnData = string(abi.encodePacked(returnData, 
+        "Track 2 Creator receives : ", uint2str(amountToGivenCreator/1000000000000000000), "\n",
+        "Track Creator 2's Balance after: ", uint2str(battle.creatorTrack2.balance/1000000000000000000), "\n"
+    ));
+
+    difference = (battle.creatorTrack2.balance-x)/1000000000000000000;
+    returnData = string(abi.encodePacked(returnData, "Difference in Track Creator 2's balance: ", uint2str(difference), "\n"));
+
+    if(difference==0){
+        returnData = string(abi.encodePacked(returnData, 
+            "Money is reverted back to the contract\n",
+            "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+        ));
+    }
+
+    returnData = string(abi.encodePacked(returnData, 
+        "Transferring reward to winner voters\n",
+        "battle.votesTrack1: ", uint2str(battle.votesTrack1), "\n"
+    ));
+
+    require(battle.votersOfTrack1.length >= battle.votesTrack1, "Voters array length mismatch");
+    for(uint i=0; i<battle.votesTrack1; i++) {
+        require(battle.votersOfTrack1[i] != address(0), "Invalid voter address");
+        returnData = string(abi.encodePacked(returnData, 
+            "Winner Voter Number:", uint2str(i), "Winner Voter balance before: ", uint2str(battle.votersOfTrack1[i].balance/1000000000000000000), "\n"
+        ));
+
+        uint256 y = battle.votersOfTrack1[i].balance;
+        payable(battle.votersOfTrack1[i]).transfer(amountGivenToEachWinnerVoter);
+        
+        returnData = string(abi.encodePacked(returnData, 
+            "Amount recieved by the voter No:", uint2str(i), " : ", uint2str(amountGivenToEachWinnerVoter/1000000000000000000), "\n",
+            "Winner Voter Number:", uint2str(i), "Winner Voter balance after: ", uint2str(battle.votersOfTrack1[i].balance/1000000000000000000), "\n"
+        ));
+
+        difference = (battle.votersOfTrack1[i].balance-y)/1000000000000000000;
+        returnData = string(abi.encodePacked(returnData, "Difference in voter's balance: ", uint2str(difference), "\n"));
+
+        if(difference==0){
+            returnData = string(abi.encodePacked(returnData, 
+                "Money is reverted back to the contract\n",
+                "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+            ));
+        }
+    }
+
+    require(battle.votersOfTrack2.length >= battle.votesTrack2, "Voters array length mismatch");
+    for(uint i=0; i<battle.votesTrack2; i++) {
+        require(battle.votersOfTrack2[i] != address(0), "Invalid voter address");
+        returnData = string(abi.encodePacked(returnData, 
+            "Winner Voter Number:", uint2str(i), "Winner Voter balance before: ", uint2str(battle.votersOfTrack2[i].balance/1000000000000000000), "\n"
+        ));
+
+        uint256 y = battle.votersOfTrack2[i].balance;
+        payable(battle.votersOfTrack2[i]).transfer(amountGivenToEachWinnerVoter);
+        
+        returnData = string(abi.encodePacked(returnData, 
+            "Amount recieved by the voter No:", uint2str(i), " : ", uint2str(amountGivenToEachWinnerVoter/1000000000000000000), "\n",
+            "Winner Voter Number:", uint2str(i), "Winner Voter balance after: ", uint2str(battle.votersOfTrack2[i].balance/1000000000000000000), "\n"
+        ));
+
+        difference = (battle.votersOfTrack2[i].balance-y)/1000000000000000000;
+        returnData = string(abi.encodePacked(returnData, "Difference in voter's balance: ", uint2str(difference), "\n"));
+
+        if(difference==0){
+            returnData = string(abi.encodePacked(returnData, 
+                "Money is reverted back to the contract\n",
+                "One Reason is that wallet contains maximum allowed amount , which 10,000 ETH\n"
+            ));
+        }
+    }
+
+    battle.isActive = false;
+    emit BattleEnded(battleId, battle.creatorTrack1);
+    emit BattleEnded(battleId, battle.creatorTrack2);
+    emit BattleConcluded(battleId, "Track 1 Won", battle.creatorTrack1, battle.votersOfTrack1, true);
+    emit BattleConcluded(battleId, "Track 2 Won", battle.creatorTrack1, battle.votersOfTrack2, true);
+
+    returnData = string(abi.encodePacked(returnData, 
+        "Remaining Balance Left on contract:", uint2str(address(this).balance/1000000000000000000), "\n",
+        "Difference in contract Balance :", uint2str((w-address(this).balance)/1000000000000000000), "\n"
+    ));
+
+    return (0, returnData);}
 }
-function battleVoters(uint256 battleId, address userAddress) public view returns (bool) {
-    Battle storage battle = battles[battleId];
-    return battle.hasVoted[userAddress];
-}
+
+
 
 function getBattleVotes(uint256 battleId) public view returns (uint256 track1Votes, uint256 track2Votes) {
         require(battleId > 0 && battleId <= battleCount, "Battle does not exist");
@@ -511,14 +665,7 @@ function getBalance() public view returns (uint256) {
     console.log("address(this).balance: ",(address(this).balance)/1000000000000000000);
     return (address(this).balance/1000000000000000000);
 }
-function votersList(uint256 battleId) public view returns (address[] memory _votersList) {
-    require(battleId > 0 && battleId <= battleCount, "Battle does not exist");
-    console.log("Voters list:");
-    for(uint16 i=0;i<battles[battleId].voters.length;i++){
-        console.log(battles[battleId].voters[i]);
-    }
-    return battles[battleId].voters;
-}
+
 
 // Solidity smart contract function
 function transferFundsFromContractToOwner(
@@ -561,6 +708,35 @@ function transferFundsFromContractToOwner(
 function toggleOracleTime(bool _useOracle) public onlyOwnerOrCreator {
         useOracleTime = _useOracle;
     }
+
+function getSpecificTrackVoters(uint trackNumber, uint battleId) public view returns (address[] memory winnerVoters) {
+    require(battleId > 0 && battleId <= battleCount, "Battle does not exist");
+    require(trackNumber == 1 || trackNumber == 2, "Invalid trackNumber");
+
+    if (trackNumber == 1) {
+        return battles[battleId].votersOfTrack1;
+    } else {
+        return battles[battleId].votersOfTrack2;
+    }
+}
+
+
+function votersList(uint256 battleId) public view returns (address[] memory _votersList) {
+    require(battleId > 0 && battleId <= battleCount, "Battle does not exist");
+    console.log("Voters list:");
+    for(uint16 i=0;i<battles[battleId].voters.length;i++){
+        console.log(battles[battleId].voters[i]);
+    }
+    return battles[battleId].voters;
+}
+
+
+    function battleVoters(uint256 battleId, address userAddress) public view returns (bool) {
+    Battle storage battle = battles[battleId];
+    return battle.hasVoted[userAddress];
+}
+
+
     // To allow contract to receive Ether
     receive() external payable {}
 }

@@ -4,20 +4,22 @@ async function voteTrack(battleId, trackNumber, userAddress, paymentAmount) {
   try {
     // Validate inputs
     if (!battleId || ![1, 2].includes(trackNumber) || !userAddress || !paymentAmount) {
-      throw new Error('Invalid battle ID, track number, user address, or paymentAmount');
+      throw new Error('Invalid battle ID, track number, user address, or payment amount');
     }
 
     // Check if the user has already voted in this battle
     const hasVoted = await contract.methods.battleVoters(battleId, userAddress).call();
     if (hasVoted) {
       console.log("You have already voted in this battle.");
-      return; // Exit if the user has already voted
+      return { message: "You have already voted in this battle." }; // Exit if the user has already voted
     }
 
-    const battledetails = await contract.methods.getBattleDetails(battleId).call();
-    battleRunningStatus=battledetails.isActive
-    if(!battleRunningStatus){
-      console.log("Battle has stopped!")
+    // // Fetch battle details
+    const battleDetails = await contract.methods.getBattleDetails(battleId).call();
+    const battleRunningStatus = battleDetails.isActive;
+    if (!battleRunningStatus) {
+      console.log("Battle has stopped!");
+      return { message: "Battle has stopped!" };
     }
 
     // Convert payment amount to Wei
@@ -37,7 +39,7 @@ async function voteTrack(battleId, trackNumber, userAddress, paymentAmount) {
     const receipt = await tx.send({
       from: userAddress,
       gas,
-      value: paymentInWei, // Corrected: Use the converted Wei value
+      value: paymentInWei,
     });
 
     // Log user balance after transaction
@@ -47,13 +49,23 @@ async function voteTrack(battleId, trackNumber, userAddress, paymentAmount) {
     console.log('Transaction Hash:', receipt.transactionHash);
 
     return {
-      transactionHash: receipt.transactionHash
+      transactionHash: receipt.transactionHash,
     };
   } catch (error) {
     console.error('Vote Track Error:', error);
-    throw error;
+
+    // Attempt to extract the specific error message
+    const errorMessage = error?.cause?.cause?.errorArgs?.message || error.message || "Unknown error occurred";
+
+    if (errorMessage.includes("Battle voting period has ended")) {
+      return { message: "Battle voting period has ended" };
+    }
+
+    // Rethrow error if not handled
+    throw new Error(`Vote Track Error: ${errorMessage}`);
   }
 }
+
 
 async function getBattleDetails(battleId) {
   try {
@@ -145,6 +157,189 @@ async function getBattleVotes(battleId) {
   }
 }
 
+// const WebSocket = require('ws');
+// const { startBattle, getWinner } = require('./battleFunctions'); // Assuming your functions are in battleFunctions.js
+
+// const wsServer = new WebSocket.Server({ port: 8080 });
+
+// const clients = new Map();
+
+// wsServer.on('connection', (ws) => {
+//   console.log('Client connected');
+
+//   // Handle incoming messages from the client
+//   ws.on('message', async (message) => {
+//     try {
+//       const data = JSON.parse(message);
+      
+//       if (data.type === 'startBattle') {
+//         const { track1, track2, creatorTrack1, creatorTrack2, userAddress, paymentAmount, delay } = data.payload;
+
+//         // Default delay if not provided (in milliseconds)
+//         const delayTime = delay || 10000;  // Default to 10 seconds if no delay is provided
+
+//         // Send an immediate acknowledgment response back to the client
+//         ws.send(JSON.stringify({
+//           type: 'battleAcknowledgment',
+//           payload: {
+//             message: 'Battle started successfully. Result will be sent after the delay.',
+//             battleDetails: { track1, track2, creatorTrack1, creatorTrack2, userAddress, paymentAmount }
+//           }
+//         }));
+
+//         // Simulate starting the battle (e.g., calling some external function)
+//         const rep = await startBattle(track1, track2, creatorTrack1, creatorTrack2, userAddress, paymentAmount);
+
+//         // Send the battle result immediately (without delay)
+//         ws.send(JSON.stringify({
+//           type: 'battleResult',
+//           payload: rep
+//         }));
+
+//         // Log the battle details
+//         console.log(`Battle started. Battle ID: ${rep.battleId}`);
+
+//         // Schedule the battle result to be sent after the specified delay
+//         setTimeout(async () => {
+//           const winnerData = await getWinner(rep.battleId);  // Assuming getWinner fetches the winner details
+//           ws.send(JSON.stringify({
+//             type: 'battleResult',
+//             payload: winnerData
+//           }));
+//         }, delayTime); // Use the configurable delay time
+//       }
+
+//     } catch (error) {
+//       console.error('Error handling message:', error);
+//       ws.send(JSON.stringify({ error: 'Invalid request' }));
+//     }
+//   });
+
+//   ws.on('close', () => {
+//     console.log('Client disconnected');
+//   });
+// });
+
+
+// Function to send results after battle closure
+async function sendBattleResults(battleId) {
+  try {
+    const winnerData = await getWinner(battleId);
+    const ws = clients.get(battleId);
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'battleResult', payload: winnerData }));
+      clients.delete(battleId); // Remove client after sending the result
+    }
+  } catch (error) {
+    console.error('Error sending battle results:', error);
+  }
+}
+
+// Simulating the scheduling logic
+function scheduleBattleClosure(battleId) {
+  setTimeout(() => sendBattleResults(battleId), 60000); // 60 seconds
+}
+
+module.exports = { scheduleBattleClosure };
+
+
+// async function startBattle(track1, track2, creatorTrack1, creatorTrack2, userAddress, paymentAmount) {
+//   try {
+//     // Validate input
+//     if (!track1 || !track2) {
+//       throw new Error('Both tracks must be provided.');
+//     }
+//     if (!creatorTrack1 || !creatorTrack2) {
+//       throw new Error('Both creator addresses must be provided.');
+//     }
+//     if (!userAddress) {
+//       throw new Error('User address must be provided.');
+//     }
+//     if (!paymentAmount || isNaN(paymentAmount) || paymentAmount <= 0) {
+//       throw new Error('A valid payment amount must be provided.');
+//     }
+
+//     // Convert payment amount to Wei
+//     const paymentInWei = web3.utils.toWei(paymentAmount.toString(), 'ether');
+
+//     // Log user balance before transaction
+//     const balanceBefore = await web3.eth.getBalance(userAddress);
+//     console.log("User's balance before transaction:", web3.utils.fromWei(balanceBefore, 'ether'), "ETH");
+
+//     // Prepare transaction
+//     const tx = contract.methods.createBattle(track1, track2, creatorTrack1, creatorTrack2);
+
+//     // Estimate gas
+//     const gas = await tx.estimateGas({
+//       from: userAddress,
+//       value: paymentInWei // Include payment in gas estimation
+//     });
+
+//     // Send transaction
+//     const receipt = await tx.send({
+//       from: userAddress,
+//       gas,
+//       value: paymentInWei // Include payment as value
+//     });
+
+//     // Log user balance after transaction
+//     const balanceAfter = await web3.eth.getBalance(userAddress);
+//     console.log("User's balance after transaction:", web3.utils.fromWei(balanceAfter, 'ether'), "ETH");
+
+//     // Extract battle ID from events
+//     const battleCreatedEvent = receipt.events?.BattleCreated;
+//     const battleId = battleCreatedEvent ? battleCreatedEvent.returnValues.battleId : null;
+
+//     console.log("Battle ID:", battleId);
+//     console.log("Transaction Hash:", receipt.transactionHash);
+
+//     // Schedule the getWinner function after 1 minute
+//     if (battleId) {
+//       console.log(`Scheduling getWinner for battle ID: ${battleId}`);
+//       console.log("Close battle function will be get implemented Now : ********************************************** in 1 minute ***************************************** ")
+//       setTimeout(() => getWinner(battleId), 15*1000);
+//     }
+
+//     return {
+//       balanceBefore: web3.utils.fromWei(balanceBefore, 'ether'),
+//       balanceAfter: web3.utils.fromWei(balanceAfter, 'ether'),
+//       battleId: battleId ? battleId.toString() : null,
+//       transactionHash: receipt.transactionHash
+//     };
+//   } catch (error) {
+//     console.error('Battle Creation Error:', error);
+//     throw error;
+//   }
+// }
+
+
+
+// Backend (Node.js)
+const WebSocket = require('ws');
+const wss = new WebSocket.Server({ port: 8080 });
+
+// Keep track of all connected clients
+const clients = new Set();
+
+// Connection handler
+wss.on('connection', (ws) => {
+    console.log('New client connected');
+    clients.add(ws);
+
+    ws.on('close', () => {
+        console.log('Client disconnected');
+        clients.delete(ws);
+    });
+
+    // Send a confirmation message on connection
+    ws.send(JSON.stringify({
+        type: 'connection',
+        payload: { status: 'connected' }
+    }));
+});
+
+
 async function startBattle(track1, track2, creatorTrack1, creatorTrack2, userAddress, paymentAmount) {
   try {
     // Validate input
@@ -195,42 +390,100 @@ async function startBattle(track1, track2, creatorTrack1, creatorTrack2, userAdd
     console.log("Battle ID:", battleId);
     console.log("Transaction Hash:", receipt.transactionHash);
 
-    // Schedule the getWinner function after 1 minute
+    // Schedule the getWinner function after 15 seconds
     if (battleId) {
       console.log(`Scheduling getWinner for battle ID: ${battleId}`);
-      console.log("Close battle function will be get implemented Now : ********************************************** in 1 minute ***************************************** ")
-      setTimeout(() => getWinner(battleId), 30000);
-    }
+      setTimeout(async () => {
+          try {
+              const winnerData = await getWinner(battleId);
+              
+              // Broadcast to all connected clients
+              clients.forEach(client => {
+                  if (client.readyState === WebSocket.OPEN) {
+                      client.send(JSON.stringify({
+                          type: 'battleResult',
+                          payload: winnerData
+                      }));
+                      console.log(`Battle result sent for Battle ID: ${battleId}`);
+                  }
+              });
+          } catch (error) {
+              console.error(`Error in delayed getWinner for Battle ID ${battleId}:`, error);
+          }
+      }, 15*1000);
+  }
 
-    return {
+  return {
       balanceBefore: web3.utils.fromWei(balanceBefore, 'ether'),
       balanceAfter: web3.utils.fromWei(balanceAfter, 'ether'),
       battleId: battleId ? battleId.toString() : null,
       transactionHash: receipt.transactionHash
-    };
-  } catch (error) {
-    console.error('Battle Creation Error:', error);
-    throw error;
-  }
+  };
+} catch (error) {
+  console.error('Battle Creation Error:', error);
+  throw error;
 }
+}
+
 
 async function getWinner(battleId) {
   try {
     if (!battleId) {
-      throw new Error('Battle ID is required');
+      throw new Error("Battle ID is required");
     }
 
-    console.log(`Battle no ${battleId} is now closing $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$`);
-    const result = await contract.methods.closeBattle(battleId).call();
-    
-    console.log("Winner:", result);
+    console.log(
+      `Battle no ${battleId} is now closing $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$`
+    );
 
-    return result; // The winner (either 'track1' or 'track2')
+    // Fetch the final result of the battle
+    const finalResult = await contract.methods.closeBattle(battleId).call();
+
+    console.log("Result is this:----------------------", finalResult);
+
+    // Extract data from the result
+    const result = finalResult["0"];
+    const resultMessage = finalResult["1"];
+
+    let part1 = "Match Ties, Money will be distributed to both. All voters are winners.";
+    let winnerVotersList = [];
+
+    // Determine the winner and fetch the voters list accordingly
+    if (result === 1n) { // Using string comparison because call() may return strings
+      part1 = "Track 1 is the winner";
+      try {
+        winnerVotersList = await contract.methods.getSpecificTrackVoters(result, battleId).call();
+      } catch (err) {
+        console.error("Error in fetching the Track 1 winner voters list:", err);
+      }
+    } else if (result == 2n) {
+      part1 = "Track 2 is the winner";
+      try {
+        winnerVotersList = await contract.methods.getSpecificTrackVoters(result, battleId).call();
+      } catch (err) {
+        console.error("Error in fetching the Track 2 winner voters list:", err);
+      }
+    } else {
+      try {
+        winnerVotersList = await contract.methods.votersList(battleId).call();
+      } catch (err) {
+        console.error("Error in fetching the voters list for a tie:", err);
+      }
+    }
+
+    // Return the final results
+    return {
+      part1,
+      winnerVotersList,
+      resultMessage,
+    };
   } catch (error) {
-    console.error('Get Winner Error:', error);
+    console.error("Get Winner Error:", error.message || error);
     throw error;
   }
 }
+
+
 
 function transformString(input) {
   if (input.length <= 4) {
@@ -313,3 +566,6 @@ module.exports = {
   func1,
   transferAmount
 };
+
+
+// C:\Users\vivek\Desktop\tempCopy4\_MusicBotUsingHardHat\bot\bot.py
