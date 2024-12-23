@@ -1,1 +1,47 @@
-node_modules
+# Byte-compiled Python files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+env/
+venv/
+
+# Node modules
+node_modules/
+
+# Hardhat files
+.cache/
+hardhat_output.log
+
+# Logs
+*.log
+
+# Database files
+*.db
+
+# Environment variables and secrets
+.env
+*.env
+
+# Compiled contract artifacts
+artifacts/
+cache/
+
+# Coverage reports
+coverage/
+coverage.json
+
+# System-specific files
+.DS_Store
+Thumbs.db
+
+# IDE-specific files
+.vscode/
+.idea/
+*.iml
+*.swp
+
+# Dump files
+Z_TO_Dump_Unrequired_files/
