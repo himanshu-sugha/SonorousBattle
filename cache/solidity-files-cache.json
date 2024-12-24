@@ -1,7 +1,7 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "C:\\Users\\Himanshu Sugha\\Desktop\\vivek\\contracts\\Lock.sol": {
+    "C:\\Users\\Himanshu Sugha\\Desktop\\viv\\contracts\\Lock.sol": {
       "lastModificationDate": 1734973560831,
       "contentHash": "7eee587c347fe6b1de50c96688cb9477",
       "sourceName": "contracts/Lock.sol",
@@ -38,7 +38,7 @@
         "Lock"
       ]
     },
-    "C:\\Users\\Himanshu Sugha\\Desktop\\vivek\\contracts\\Migrations.sol": {
+    "C:\\Users\\Himanshu Sugha\\Desktop\\viv\\contracts\\Migrations.sol": {
       "lastModificationDate": 1734973560831,
       "contentHash": "cf66c017704affbf8ee1c75777569a20",
       "sourceName": "contracts/Migrations.sol",
@@ -75,7 +75,7 @@
         "Migrations"
       ]
     },
-    "C:\\Users\\Himanshu Sugha\\Desktop\\vivek\\contracts\\MusicBattle.sol": {
+    "C:\\Users\\Himanshu Sugha\\Desktop\\viv\\contracts\\MusicBattle.sol": {
       "lastModificationDate": 1734973560832,
       "contentHash": "9a286a0ba74d82be00b798da524198a1",
       "sourceName": "contracts/MusicBattle.sol",
@@ -115,7 +115,7 @@
         "MusicBattle"
       ]
     },
-    "C:\\Users\\Himanshu Sugha\\Desktop\\vivek\\node_modules\\hardhat\\console.sol": {
+    "C:\\Users\\Himanshu Sugha\\Desktop\\viv\\node_modules\\hardhat\\console.sol": {
       "lastModificationDate": 1734973572880,
       "contentHash": "681c532e816169606d13a5fe8b475074",
       "sourceName": "hardhat/console.sol",

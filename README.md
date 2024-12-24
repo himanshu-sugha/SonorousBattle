@@ -44,9 +44,7 @@ SonorousBattle is a Telegram bot integrated with blockchain functionality. This 
 
 ## Diagram
 
-(Insert a visual diagram here illustrating the interaction between Telegram bot, Spotify API, and blockchain backend.)
-
----
+![System Architecture](SonorousBattle_Diagram.png)
 
 ## Installation
 
@@ -55,44 +53,51 @@ SonorousBattle is a Telegram bot integrated with blockchain functionality. This 
 - Python
 - Hardhat
 
-# Complete Setup Script for Hardhat and Bot 
+## Installation and Setup Guide
 
+Follow these steps to set up and run the project:
+
+### 1. Install Node.js Dependencies
+Run this command in the root of your project directory:
 ```bash
-#!/bin/bash
-
-# ============================================
-# Setup Script for Hardhat and Telegram Bot
-# ============================================
-
-# Step 1: Start the Hardhat Node
-echo "🚀 Starting Hardhat Node..."
-npx hardhat node &
-
-# Wait for Hardhat Node to initialize
-echo "⏳ Waiting for Hardhat Node to initialize..."
-sleep 5
-
-# Step 2: Deploy Smart Contracts
-echo "📜 Deploying Smart Contracts..."
+npm install
+```
+### 2. Start the Hardhat Node
+Initialize the blockchain environment:
+```bash
+npx hardhat node
+```
+### 3. Deploy Smart Contracts
+Open a new terminal and deploy the smart contracts to the local Hardhat network:
+```bash
 npx hardhat run scripts/deploy.js --network localhost
+```
+### 4. Start the Backend Server
+Navigate to the backend directory and start the server:
+```bash
+cd backend
+node app.js
+```
+### 5. Set Up the Python Bot
+Navigate to the bot directory and follow these steps:
 
-# Step 3: Install Bot Dependencies
-echo "📦 Installing Bot Dependencies..."
-pip install requests python-telegram-bot python-dotenv
-
-# Step 4: Create and Configure the .env File
-echo "🛠️ Creating .env file for the bot configuration..."
-cat <<EOL > .env
-# Telegram Bot Configuration
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
-API_BASE_URL=http://localhost:3000/api
-EOL
-echo "✅ .env file created! Remember to replace 'your_telegram_bot_token_here' with your actual Telegram bot token."
-
-# Step 5: Run the Bot
-echo "🤖 Starting the Telegram Bot..."
+- a. Create a Python Virtual Environment
+```bash
+cd bot
+python -m venv env
+```
+- b. Activate the Virtual Environment
+For Windows:
+```bash
+.\env\Scripts\activate
+```
+- c. Install Required Python Dependencies
+Install the necessary Python packages:
+```bash
+pip install requests python-telegram-bot spotipy websockets google-api-python-client
+```
+- d. Start the Telegram Bot
+Run the bot using:
+```bash
 python bot.py
-
-# ============================================
-# Script Execution Completed
-# ============================================
+```
