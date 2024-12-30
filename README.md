@@ -73,13 +73,13 @@ Open a new terminal and deploy the smart contracts to the local Hardhat network:
 npx hardhat run scripts/deploy.js --network localhost
 ```
 ### 4. Start the Backend Server
-Navigate to the backend directory and start the server:
+Open a new terminal then Navigate to the backend directory and start the server:
 ```bash
 cd backend
 node app.js
 ```
 ### 5. Set Up the Python Bot
-Navigate to the bot directory and follow these steps:
+Open a new terminal then Navigate to the bot directory and follow these steps:
 
 - a. Create a Python Virtual Environment
 ```bash
