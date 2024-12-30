@@ -149,8 +149,10 @@ async def get_total_voters(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Fetches the leaderboard for top tracks."""
     try:
-        # Assuming 'battleId' is somehow available in the context, for example, from the command
-        battle_id = context.args[0]  # Replace with actual battleId from context or message
+        if len(context.args) != 1:
+            await update.message.reply_text("Usage: /leaderboard <battleId>")
+            return
+        battle_id = context.args[0]  
         response = requests.get(f"{BASE_URL}/leaderboard/{battle_id}")  # Pass battleId here
         data = response.json()
 
