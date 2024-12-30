@@ -9,7 +9,14 @@ from telegram.ext import (
 )
 
 # Telegram bot token
-BOT_TOKEN = "8125453843:AAFpfmYh97iFq-_wmaah_a3_98KfmJaEMPY"
+from dotenv import load_dotenv
+import os
+# Load .env file
+load_dotenv()
+
+# Telegram bot token
+BOT_TOKEN =  os.getenv('BOT_TOKEN')
+print(f"BOT_TOKEN from bot file ---------------{BOT_TOKEN}")
 
 # bot commands  
 from BotCommands import vote_track , get_battle_details , get_votes , leaderboard , get_total_voters , get_voters_list , transfer_to_owner , close_battle ,get_balance , handle_voting , handle_genre_selection ,start_battle,help_command
