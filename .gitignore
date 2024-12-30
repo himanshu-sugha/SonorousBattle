@@ -49,3 +49,4 @@ Z_TO_Dump_Unrequired_files/
 ignition
 bot\.env
 .cache
+backend\.env
