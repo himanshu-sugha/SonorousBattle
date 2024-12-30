@@ -50,7 +50,7 @@ SonorousBattle is a Telegram bot integrated with blockchain functionality. This 
 ## Diagram
 
 ![System Architecture](./images/SonorousBattle_Diagram.png)
-We made this project on local hardhat instead of testnet by taking permission from sonorous and will update the project
+
 ---
 
 ## Installation
@@ -98,10 +98,7 @@ Follow these steps to set up and run the project:
      # Address of account 0
      ACCOUNT_ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
      ```
-     ---
-     ---
-     ![baenv](./images/baenv.png)
-
+     
 4. **Start the Hardhat Node**
    Initialize the blockchain environment:
    ```bash
