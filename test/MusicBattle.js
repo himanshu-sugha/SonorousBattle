@@ -5,17 +5,17 @@ describe("MusicBattle Contract", function () {
     let MusicBattle, musicBattle, deployer, addr1, addr2;
 
     beforeEach(async function () {
-        // Deploy contract
+        
         MusicBattle = await ethers.getContractFactory("MusicBattle");
         
-        // Modify deployment to work with ethers v6
+      
         musicBattle = await MusicBattle.deploy();
         await musicBattle.waitForDeployment();
 
-        // Get signers
+      
         [deployer, addr1, addr2] = await ethers.getSigners();
 
-        // Send initial funding
+        
         const fundTx = await deployer.sendTransaction({
             to: await musicBattle.getAddress(),
             value: ethers.parseEther("50")
@@ -25,7 +25,7 @@ describe("MusicBattle Contract", function () {
 
     it("Should fund the contract successfully", async function () {
         const balance = await musicBattle.getBalance();
-        // Remove decimal places before comparison
+        
         expect(ethers.formatEther(balance).split(".")[0]).to.equal("50");
     });
 

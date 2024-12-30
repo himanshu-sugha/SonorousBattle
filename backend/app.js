@@ -12,11 +12,10 @@ const {
   func1,
   getVotersList,
   transferAmount
-} = require('./music_battle_contract'); // Assume these functions are connected to the smart contract
+} = require('./music_battle_contract'); 
 
 const app = express();
 
-// Global object to store votes for leaderboard (simplified for this example)
 
 // Middleware
 app.use(express.json());
@@ -27,8 +26,8 @@ app.use((req, res, next) => {
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, 
+  max: 100 
 });
 app.use(limiter);
 
@@ -102,15 +101,6 @@ app.post(
 
       const result = await voteTrack(battleId, trackNumber, userAddress,paymentAmount);
 
-
-
-      // Update leaderboard
-      // if (trackNumber === 1) {
-      //   leaderboard.track1++;
-      // } else if (trackNumber === 2) {
-      //   leaderboard.track2++;
-      // }
-
       console.log("Inside the vote function :result:",result)
 
       
@@ -134,25 +124,6 @@ app.post(
   }
 );
 
-
-
-
-
-// // Route to get the leaderboard
-// app.get('/leaderboard/', (req, res) => {
-//   try {
-//     const sortedLeaderboard = Object.entries(leaderboard)
-//       .sort(([, a], [, b]) => b - a)
-//       .map(([track, votes]) => ({ track, votes }));
-
-//     res.json({
-//       leaderboard: sortedLeaderboard
-//     });
-//   } catch (error) {
-//     console.error('Leaderboard Error:', error);
-//     res.status(500).json({ error: 'Failed to retrieve leaderboard' });
-//   }
-// });
 
 // Route to get votes for a battle
 app.get(
@@ -180,7 +151,7 @@ app.get(
 
 // Route to get battle details
 app.get(
-  '/leaderboard/:battleId',  // Corrected to accept battleId as a parameter
+  '/leaderboard/:battleId',  
   validateBattleId,
   handleValidationErrors,
   async (req, res) => {
@@ -188,10 +159,9 @@ app.get(
       const { battleId } = req.params;
       const votes = await getBattleVotes(battleId);
 
-      // Convert the string votes to numbers (parseInt)
       const leaderboard = [
-        { track: 'Track 1', votes: parseInt(votes.track1Votes) },  // Convert to number
-        { track: 'Track 2', votes: parseInt(votes.track2Votes) },  // Convert to number
+        { track: 'Track 1', votes: parseInt(votes.track1Votes) },  
+        { track: 'Track 2', votes: parseInt(votes.track2Votes) },  
       ];
 
       // Sort the leaderboard by votes in descending order
@@ -307,7 +277,7 @@ app.get(
 // Utility function to validate Ethereum address
 function isValidAddress(address) {
     try {
-        // Using the newer method to check address validity
+        
         return web3.utils.isHexStrict(address) && address.length === 42;
     } catch (error) {
         return false;
@@ -336,7 +306,6 @@ app.post('/transferToOwner', handleValidationErrors, async (req, res) => {
             });
         }
 
-        // Validate addresses format using the new method
         if (!isValidAddress(userAddress) || !isValidAddress(senderAddress)) {
             return res.status(400).json({ 
                 success: false,
@@ -344,10 +313,10 @@ app.post('/transferToOwner', handleValidationErrors, async (req, res) => {
             });
         }
 
-        // Perform the transfer
+       
         const result = transferAmount(amount, userAddress, senderAddress);
 
-        // Send success response
+       
         res.json({
             success: true,
             data: result

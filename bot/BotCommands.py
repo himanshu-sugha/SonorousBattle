@@ -4,14 +4,14 @@ import requests ,logging
 import json , random 
 import googleapiclient.discovery
 
-# Enable logging
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 # Backend API URL
 BASE_URL = "http://localhost:5000"
-# Command: /votetrack
+
 
 
 api_service_name = "youtube"
@@ -358,7 +358,7 @@ async def handle_genre_selection(update: Update, context: ContextTypes.DEFAULT_T
         track1_name = sanitize_string(track1["snippet"]["title"])
         track1_artist = sanitize_string(track1["snippet"]["channelTitle"])
         track1_preview = f"https://www.youtube.com/watch?v={track1_id}"
-        track1_thumbnail = track1["snippet"]["thumbnails"]["high"]["url"]  # Higher quality thumbnail
+        track1_thumbnail = track1["snippet"]["thumbnails"]["high"]["url"] 
 
         track2_id = track2["id"]["videoId"]
         track2_name = sanitize_string(track2["snippet"]["title"])
@@ -372,7 +372,7 @@ async def handle_genre_selection(update: Update, context: ContextTypes.DEFAULT_T
         print(f"Track 1 Preview: {track1_preview}")
         print(f"Track 2 Preview: {track2_preview}")
 
-    # Create dictionary for track details
+    
         tracks_data = {
         track1_id: {"name": track1_name, "artist": track1_artist, "preview": track1_preview},
         track2_id: {"name": track2_name, "artist": track2_artist, "preview": track2_preview},
@@ -437,7 +437,7 @@ async def handle_genre_selection(update: Update, context: ContextTypes.DEFAULT_T
     print(f"Dumped Payload prepared: {payload}")
 
     try:
-        data = await fetch_battle_data(payload)  # Call the separate function for fetching data
+        data = await fetch_battle_data(payload)  
         
         if "error" in data:
             # If an error is found in the data, return the error message
@@ -465,8 +465,6 @@ async def handle_genre_selection(update: Update, context: ContextTypes.DEFAULT_T
         await query.edit_message_text("❌ Failed to connect to the backend.")
         return
 
-    # Run the asyncio event loop
-    # asyncio.run(start_battle())
 
     # Step 6: Set up the voting UI
     messageToSendToCallBack=f"Vote for your favorite track below:\n\n"f"Track 1: {track1_name} by {creator1}\n"f"Track 2: {track2_name} by {creator2}\n"
@@ -519,19 +517,19 @@ async def handle_voting(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     query = update.callback_query
     await query.answer()
 
-    # Extract the data from the callback_data
+    
     try:
-        # Unpack the data based on the updated structure
+        
         _, voted_track, battle_id, payment_amount= query.data.split("|")
     except ValueError:
         print("vote_track: ",vote_track,"battle_id: ",battle_id,"payment_amount: ",payment_amount)
         await query.message.reply_text("❌ Invalid voting data received. Please try again.")
         return
 
-    # Convert battle_id and payment_amount to appropriate types
+    
     try:
-        battle_id = int(battle_id)  # Convert to integer if necessary
-        payment_amount = float(payment_amount)  # Convert to float for numeric operations
+        battle_id = int(battle_id)  
+        payment_amount = float(payment_amount)  
     except ValueError:
         await query.message.reply_text("❌ Invalid data format in voting information.")
         return
@@ -549,7 +547,7 @@ async def handle_voting(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             await query.edit_message_text("❌ You haven't set your wallet address yet. Use /setwallet to set it.")
             return
 
-    # Retrieve the wallet address for the user
+    
         user_address = user_wallet_mapping[user_id]["wallet"]
         # await query.edit_message_text(f"✅ Your wallet address is {user_address}.")
     except Exception as e:

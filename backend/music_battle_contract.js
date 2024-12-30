@@ -2,12 +2,12 @@ const { web3, contract, privateKey } = require("./web3Config.js");
 
 async function voteTrack(battleId, trackNumber, userAddress, paymentAmount) {
   try {
-    // Validate inputs
+    
     if (!battleId || ![1, 2].includes(trackNumber) || !userAddress || !paymentAmount) {
       throw new Error('Invalid battle ID, track number, user address, or payment amount');
     }
 
-    // Check if the user has already voted in this battle
+    
     const hasVoted = await contract.methods.battleVoters(battleId, userAddress).call();
     if (hasVoted) {
       console.log("You have already voted in this battle.");
@@ -22,7 +22,6 @@ async function voteTrack(battleId, trackNumber, userAddress, paymentAmount) {
       return { message: "Battle has stopped!" };
     }
 
-    // Convert payment amount to Wei
     const paymentInWei = web3.utils.toWei(paymentAmount.toString(), 'ether');
 
     // Log user balance before transaction
@@ -157,69 +156,6 @@ async function getBattleVotes(battleId) {
   }
 }
 
-// const WebSocket = require('ws');
-// const { startBattle, getWinner } = require('./battleFunctions'); // Assuming your functions are in battleFunctions.js
-
-// const wsServer = new WebSocket.Server({ port: 8080 });
-
-// const clients = new Map();
-
-// wsServer.on('connection', (ws) => {
-//   console.log('Client connected');
-
-//   // Handle incoming messages from the client
-//   ws.on('message', async (message) => {
-//     try {
-//       const data = JSON.parse(message);
-      
-//       if (data.type === 'startBattle') {
-//         const { track1, track2, creatorTrack1, creatorTrack2, userAddress, paymentAmount, delay } = data.payload;
-
-//         // Default delay if not provided (in milliseconds)
-//         const delayTime = delay || 10000;  // Default to 10 seconds if no delay is provided
-
-//         // Send an immediate acknowledgment response back to the client
-//         ws.send(JSON.stringify({
-//           type: 'battleAcknowledgment',
-//           payload: {
-//             message: 'Battle started successfully. Result will be sent after the delay.',
-//             battleDetails: { track1, track2, creatorTrack1, creatorTrack2, userAddress, paymentAmount }
-//           }
-//         }));
-
-//         // Simulate starting the battle (e.g., calling some external function)
-//         const rep = await startBattle(track1, track2, creatorTrack1, creatorTrack2, userAddress, paymentAmount);
-
-//         // Send the battle result immediately (without delay)
-//         ws.send(JSON.stringify({
-//           type: 'battleResult',
-//           payload: rep
-//         }));
-
-//         // Log the battle details
-//         console.log(`Battle started. Battle ID: ${rep.battleId}`);
-
-//         // Schedule the battle result to be sent after the specified delay
-//         setTimeout(async () => {
-//           const winnerData = await getWinner(rep.battleId);  // Assuming getWinner fetches the winner details
-//           ws.send(JSON.stringify({
-//             type: 'battleResult',
-//             payload: winnerData
-//           }));
-//         }, delayTime); // Use the configurable delay time
-//       }
-
-//     } catch (error) {
-//       console.error('Error handling message:', error);
-//       ws.send(JSON.stringify({ error: 'Invalid request' }));
-//     }
-//   });
-
-//   ws.on('close', () => {
-//     console.log('Client disconnected');
-//   });
-// });
-
 
 // Function to send results after battle closure
 async function sendBattleResults(battleId) {
@@ -244,7 +180,7 @@ function scheduleBattleClosure(battleId) {
 module.exports = { scheduleBattleClosure };
 
 
-// async function startBattle(track1, track2, creatorTrack1, creatorTrack2, userAddress, paymentAmount) {
+
 //   try {
 //     // Validate input
 //     if (!track1 || !track2) {
@@ -390,7 +326,7 @@ async function startBattle(track1, track2, creatorTrack1, creatorTrack2, userAdd
     console.log("Battle ID:", battleId);
     console.log("Transaction Hash:", receipt.transactionHash);
 
-    // Schedule the getWinner function after 15 seconds
+    
     if (battleId) {
       console.log(`Scheduling getWinner for battle ID: ${battleId}`);
       setTimeout(async () => {
@@ -567,5 +503,3 @@ module.exports = {
   transferAmount
 };
 
-
-// C:\Users\vivek\Desktop\tempCopy4\_MusicBotUsingHardHat\bot\bot.py

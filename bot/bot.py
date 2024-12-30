@@ -8,13 +8,11 @@ from telegram.ext import (
     CallbackQueryHandler
 )
 
-# Telegram bot token
 from dotenv import load_dotenv
 import os
-# Load .env file
+
 load_dotenv()
 
-# Telegram bot token
 BOT_TOKEN =  os.getenv('BOT_TOKEN')
 print(f"BOT_TOKEN from bot file ---------------{BOT_TOKEN}")
 
