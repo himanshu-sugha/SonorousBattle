@@ -10,6 +10,7 @@ SonorousBattle is a Telegram bot integrated with blockchain functionality. This 
 - [Diagram](#diagram)
 - [Installation](#installation)
 - [Getting Started](#getting-started)
+- [Usage](#usage)
 - [Contact Info](#contact-info)
 
 ---
@@ -49,7 +50,7 @@ SonorousBattle is a Telegram bot integrated with blockchain functionality. This 
 ## Diagram
 
 ![System Architecture](./images/SonorousBattle_Diagram.png)
-
+We made this project on local hardhat instead of testnet by taking permission from sonorous and will update the project
 ---
 
 ## Installation
@@ -80,9 +81,12 @@ Follow these steps to set up and run the project:
      ```env
      BOT_TOKEN=paste your bot token you got from BotFather
      ```
+     ---
+     ---
      ![benv](./images/benv.png)
 
    - **Backend Folder's `.env` File**:
+      You will get contract address is step 5 of installation . if you are still facing problem see the step 1 of usage from where to copy the contact address
      ```env
      # Replace with the deployed contract address. you will get that when you will do step 5 of installation
 
@@ -94,6 +98,8 @@ Follow these steps to set up and run the project:
      # Address of account 0
      ACCOUNT_ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
      ```
+     ---
+     ---
      ![baenv](./images/baenv.png)
 
 4. **Start the Hardhat Node**
@@ -190,9 +196,8 @@ Follow these steps to set up and run the project:
   This is how the "Start Battle" interface looks in the bot:
 
   ![Start UI](./images/startbattleui.png)
-
 ---
-
+---
 ### 2. Voting
 
 - **Voting UI:**
@@ -201,7 +206,7 @@ Follow these steps to set up and run the project:
   ![Voting](./images/voting.png)
 
 ---
-
+---
 ### 3. Terminal Usage
 
 - **Info Screenshot:**
@@ -210,7 +215,8 @@ Follow these steps to set up and run the project:
   ![Info](./images/info.png)
 
 ---
-
+---
+   
 ### 4. Bot Features
 
 - **Features List:**
