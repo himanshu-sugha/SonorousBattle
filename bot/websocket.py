@@ -1,5 +1,14 @@
 import asyncio,json,websockets,logging,socket
-BOT_TOKEN = "7606681330:AAHNUpi_k1tfUIKyBeFGn1HusWDahrnUxMw"
+# Telegram bot token
+from dotenv import load_dotenv
+import os
+# Load .env file
+load_dotenv()
+
+# Telegram bot token
+BOT_TOKEN =  os.getenv('BOT_TOKEN')
+print(f"BOT_TOKEN from websockets file ---------------{BOT_TOKEN}")
+
 from telegram import Bot
 from telegram.ext import Application
 
