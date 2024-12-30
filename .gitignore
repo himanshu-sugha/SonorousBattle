@@ -43,5 +43,9 @@ Thumbs.db
 *.iml
 *.swp
 
+
 # Dump files
 Z_TO_Dump_Unrequired_files/
+ignition
+bot\.env
+.cache
